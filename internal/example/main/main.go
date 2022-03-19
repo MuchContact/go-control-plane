@@ -16,12 +16,13 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
-
+	"fmt"
 	"github.com/envoyproxy/go-control-plane/internal/example"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/server/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/test/v3"
+	"os"
+	"time"
 )
 
 var (
@@ -64,7 +65,26 @@ func main() {
 
 	// Run the xDS server
 	ctx := context.Background()
+	go func(ctx context.Context) {
+		ticker := time.NewTicker(time.Minute)
+		for{
+			select {
+			case <-ticker.C:
+				newsnapshot := example.GenerateSnapshot()
+				fmt.Println("update snap")
+				if err := cache.SetSnapshot(context.Background(), nodeID, newsnapshot); err != nil {
+					l.Errorf("snapshot error %q for %+v", err, newsnapshot)
+					os.Exit(1)
+				}
+			case <-ctx.Done():
+				l.Warnf("exit select")
+				return
+			}}
+
+	}(ctx)
 	cb := &test.Callbacks{Debug: l.Debug}
 	srv := server.NewServer(ctx, cache, cb)
 	example.RunServer(ctx, srv, port)
+
+
 }

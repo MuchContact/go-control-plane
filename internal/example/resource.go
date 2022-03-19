@@ -14,6 +14,8 @@
 package example
 
 import (
+	"fmt"
+	"math/rand"
 	"time"
 
 	"google.golang.org/protobuf/types/known/anypb"
@@ -77,6 +79,8 @@ func makeEndpoint(clusterName string) *endpoint.ClusterLoadAssignment {
 }
 
 func makeRoute(routeName string, clusterName string) *route.RouteConfiguration {
+	prefixNum := rand.Int()
+	prefix := fmt.Sprintf("/%v", prefixNum)
 	return &route.RouteConfiguration{
 		Name: routeName,
 		VirtualHosts: []*route.VirtualHost{{
@@ -85,7 +89,7 @@ func makeRoute(routeName string, clusterName string) *route.RouteConfiguration {
 			Routes: []*route.Route{{
 				Match: &route.RouteMatch{
 					PathSpecifier: &route.RouteMatch_Prefix{
-						Prefix: "/",
+						Prefix: prefix,
 					},
 				},
 				Action: &route.Route_Route{
@@ -164,14 +168,16 @@ func makeConfigSource() *core.ConfigSource {
 	}
 	return source
 }
-
+var version=1
 func GenerateSnapshot() *cache.Snapshot {
-	snap, _ := cache.NewSnapshot("1",
+	newVersion := fmt.Sprintf("%v", version)
+	snap, _ := cache.NewSnapshot(newVersion,
 		map[resource.Type][]types.Resource{
 			resource.ClusterType:  {makeCluster(ClusterName)},
 			resource.RouteType:    {makeRoute(RouteName, ClusterName)},
 			resource.ListenerType: {makeHTTPListener(ListenerName, RouteName)},
 		},
 	)
+	version++
 	return snap
 }
